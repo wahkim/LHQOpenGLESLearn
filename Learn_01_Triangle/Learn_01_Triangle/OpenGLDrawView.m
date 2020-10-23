@@ -55,6 +55,7 @@
 
 - (void)createFrameBuffer
 {
+    /// 创建帧/渲染缓冲区
     glGenFramebuffers(1, &_viewFrameBuffer);
     glGenRenderbuffers(1, &_viewRenderBuffer);
     
