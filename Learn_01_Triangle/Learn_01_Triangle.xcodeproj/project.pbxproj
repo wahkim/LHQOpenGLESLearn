@@ -18,6 +18,9 @@
 		29631F132541813200BDEE60 /* Learn_01_TriangleUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 29631F122541813200BDEE60 /* Learn_01_TriangleUITests.m */; };
 		29631F252541818E00BDEE60 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 29631F242541818E00BDEE60 /* OpenGLES.framework */; };
 		29631F282541820900BDEE60 /* OpenGLDrawView.m in Sources */ = {isa = PBXBuildFile; fileRef = 29631F272541820900BDEE60 /* OpenGLDrawView.m */; };
+		2993AA2E254416BF0046731E /* VertexShader.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 2993AA2D254416BF0046731E /* VertexShader.glsl */; };
+		2993AA33254416E50046731E /* FragShader.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 2993AA32254416E50046731E /* FragShader.glsl */; };
+		2993AA39254417AA0046731E /* GLESUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 2993AA38254417AA0046731E /* GLESUtils.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +62,10 @@
 		29631F242541818E00BDEE60 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
 		29631F262541820900BDEE60 /* OpenGLDrawView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OpenGLDrawView.h; sourceTree = "<group>"; };
 		29631F272541820900BDEE60 /* OpenGLDrawView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OpenGLDrawView.m; sourceTree = "<group>"; };
+		2993AA2D254416BF0046731E /* VertexShader.glsl */ = {isa = PBXFileReference; lastKnownFileType = text; path = VertexShader.glsl; sourceTree = "<group>"; };
+		2993AA32254416E50046731E /* FragShader.glsl */ = {isa = PBXFileReference; lastKnownFileType = text; path = FragShader.glsl; sourceTree = "<group>"; };
+		2993AA37254417AA0046731E /* GLESUtils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GLESUtils.h; sourceTree = "<group>"; };
+		2993AA38254417AA0046731E /* GLESUtils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GLESUtils.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -119,6 +126,10 @@
 				29631EF22541812F00BDEE60 /* ViewController.m */,
 				29631F262541820900BDEE60 /* OpenGLDrawView.h */,
 				29631F272541820900BDEE60 /* OpenGLDrawView.m */,
+				2993AA37254417AA0046731E /* GLESUtils.h */,
+				2993AA38254417AA0046731E /* GLESUtils.m */,
+				2993AA2D254416BF0046731E /* VertexShader.glsl */,
+				2993AA32254416E50046731E /* FragShader.glsl */,
 				29631EF42541812F00BDEE60 /* Main.storyboard */,
 				29631EF72541813100BDEE60 /* Assets.xcassets */,
 				29631EF92541813100BDEE60 /* LaunchScreen.storyboard */,
@@ -257,7 +268,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				29631EFB2541813100BDEE60 /* LaunchScreen.storyboard in Resources */,
+				2993AA33254416E50046731E /* FragShader.glsl in Resources */,
 				29631EF82541813100BDEE60 /* Assets.xcassets in Resources */,
+				2993AA2E254416BF0046731E /* VertexShader.glsl in Resources */,
 				29631EF62541812F00BDEE60 /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -287,6 +300,7 @@
 				29631EED2541812F00BDEE60 /* AppDelegate.m in Sources */,
 				29631EFE2541813100BDEE60 /* main.m in Sources */,
 				29631EF02541812F00BDEE60 /* SceneDelegate.m in Sources */,
+				2993AA39254417AA0046731E /* GLESUtils.m in Sources */,
 				29631F282541820900BDEE60 /* OpenGLDrawView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

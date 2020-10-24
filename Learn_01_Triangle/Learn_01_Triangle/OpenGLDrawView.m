@@ -4,8 +4,26 @@
 //
 //  Created by Xhorse_iOS3 on 2020/10/22.
 // https://jingyan.baidu.com/article/20b68a889bdb58796dec6247.html
+// https://www.cnblogs.com/kesalin/archive/2012/11/25/opengl_es_tutorial_02.html
+// http://blog.oo87.com/opengl/9860.html#directory00979995203361112627
 
 #import "OpenGLDrawView.h"
+
+@interface OpenGLDrawView ()
+{
+    CAEAGLLayer* _eaglLayer;
+    EAGLContext* _context;
+    
+    GLuint _colorRenderBuffer;
+    GLuint _frameBuffer;
+    GLuint _depthRenderBuffer;
+    GLuint _program;
+    GLuint _positionSlot;
+    GLint _width; /// 窗口宽度
+    GLint _height; /// 窗口高度
+}
+
+@end
 
 @implementation OpenGLDrawView
 
@@ -13,7 +31,9 @@
 {
     if (self = [super init])
     {
+        [self setupLayer];
         [self setupContext];
+        [self setupProgram];
     }
     return self;
 }
@@ -26,188 +46,110 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    
-    [self destoryFrameBuffer];
-    [self createFrameBuffer];
-    [self drawView];
+
+    [EAGLContext setCurrentContext:_context];
+    [self destoryBuffers];
+    [self setupBuffers];
+    [self render];
+//    [self setupLinker];
+
 }
 
 #pragma mark - Setup Method
 
-- (void)setupContext
+- (void)setupLayer
 {
-    CAEAGLLayer *eaglLayer = (CAEAGLLayer *)self.layer;
-    eaglLayer.opaque = YES;
-    eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:NO],kEAGLDrawablePropertyRetainedBacking,kEAGLColorFormatSRGBA8,kEAGLDrawablePropertyColorFormat, nil];
-    
-    self.context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
-    
-    if (!self.context || ![EAGLContext setCurrentContext:self.context])
-    {
-        NSLog(@"setup context failed");
-    }
-    
-    if (![self setupShader])
-    {
-        NSLog(@"setupShader failed");
-    }
+    _eaglLayer = (CAEAGLLayer *)self.layer;
+    _eaglLayer.opaque = YES; /// CALayer 默认是透明的，必须将它设为不透明才能让其可见
+    _eaglLayer.drawableProperties = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:NO],kEAGLDrawablePropertyRetainedBacking,kEAGLColorFormatSRGBA8,kEAGLDrawablePropertyColorFormat, nil];
 }
 
-- (void)createFrameBuffer
+- (void)setupContext
 {
-    /// 创建帧/渲染缓冲区
-    glGenFramebuffers(1, &_viewFrameBuffer);
-    glGenRenderbuffers(1, &_viewRenderBuffer);
+    _context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
+    [EAGLContext setCurrentContext:_context];
+}
+
+- (void)setupBuffers
+{
+    glGenRenderbuffers(1, &_colorRenderBuffer);
+    // 设置为当前 renderbuffer
+    glBindRenderbuffer(GL_RENDERBUFFER, _colorRenderBuffer);
+    // 为 color renderbuffer 分配存储空间
+    [_context renderbufferStorage:GL_RENDERBUFFER fromDrawable:_eaglLayer];
     
-    glBindFramebuffer(GL_FRAMEBUFFER, _viewFrameBuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, _viewRenderBuffer);
-    
-    [self.context renderbufferStorage:GL_RENDERBUFFER fromDrawable:(CAEAGLLayer *)self.layer];
-    
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _viewRenderBuffer);
+    glGenFramebuffers(1, &_frameBuffer);
+    // 设置为当前 framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, _frameBuffer);
+    // 将 _colorRenderBuffer 装配到 GL_COLOR_ATTACHMENT0 这个装配点上
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                              GL_RENDERBUFFER, _colorRenderBuffer);
     
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &_width);
     glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &_height);
-    
-    glGenRenderbuffers(1, &_depthRenderBuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, _depthRenderBuffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, _width, _height);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depthRenderBuffer);
 
-    
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-        NSLog(@"failed to create frame buffer");
-    }
+//    glGenRenderbuffers(1, &_depthRenderBuffer);
+//    glBindRenderbuffer(GL_RENDERBUFFER, _depthRenderBuffer);
+//    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, _width, _height);
+//    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _depthRenderBuffer);
 }
 
-- (void)destoryFrameBuffer
+/// 初始化定时器
+- (void)setupLinker
 {
-    glDeleteBuffers(1, &_viewFrameBuffer);
-    _viewFrameBuffer = 0;
-    
-    glDeleteBuffers(1, &_viewRenderBuffer);
-    _viewRenderBuffer = 0;
-    
-    if (_depthRenderBuffer)
-    {
-        glDeleteBuffers(1, &_depthRenderBuffer);
-        _depthRenderBuffer = 0;
-    }
+    CADisplayLink *linker = [CADisplayLink displayLinkWithTarget:self selector:@selector(render)];
+    linker.frameInterval = 1;
+    [linker addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 }
 
-- (BOOL)setupShader
+- (void)destoryBuffers
 {
-    GLbyte vertexShaderStr[] =
-    "uniform mat4 u_mvpMatrix;      \n"
-    "attribute vec4 vertexPosition; \n"
-    "void main()                    \n"
-    "{                              \n"
-    "   gl_Position = vertexPosition; \n"
-    "}                              \n";
-    
-    GLbyte fragmentShaderStr[] =
-    "precision mediump float; \n"
-    "void main()                    \n"
-    "{                              \n"
-    "   gl_FragColor = vec4 (0.0, 0.0, 1.0, 1.0); \n"
-    "}                              \n";
-    
-    GLuint vertexShader;
-    GLuint fragmentShader;
-    
-    GLuint program;
-    GLint linked;
-    
-    vertexShader = [self loadshader:(const char *)vertexShaderStr type:GL_VERTEX_SHADER];
-    fragmentShader = [self loadshader:(const char *)fragmentShaderStr type:GL_FRAGMENT_SHADER];
-    
-    program = glCreateProgram();
-    if (program == 0) {
-        return NO;
-    }
-    
-    glAttachShader(program, vertexShader);
-    glAttachShader(program, fragmentShader);
-    
-    glBindAttribLocation(program, 0, "vertextPosition");
-    glLinkProgram(program);
-    glGetProgramiv(program, GL_LINK_STATUS, &linked);
-    if (!linked) {
-        GLint infoLen = 0;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLen);
-        if (infoLen > 1) {
-            char *infoLog = malloc(sizeof(char) * infoLen);
-            glGetProgramInfoLog(program, infoLen, NULL, infoLog);
-            free(infoLog);
-        }
-        glDeleteShader(program);
-        return GL_FALSE;
-    }
-    
-    _openGLESContext.program = program;
-    glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
-    return YES;
+    glDeleteRenderbuffers(1, &_colorRenderBuffer);
+    _colorRenderBuffer = 0;
+
+    glDeleteFramebuffers(1, &_frameBuffer);
+    _frameBuffer = 0;
 }
 
-- (GLuint)loadshader:(const char *)shaderSource type:(GLenum)type
+- (void)setupProgram
 {
-    GLuint shader;
-    GLint complied;
+    NSString *vertexShaderPath = [[NSBundle mainBundle] pathForResource:@"VertexShader"
+                                                                  ofType:@"glsl"];
+    NSString *fragShaderPath = [[NSBundle mainBundle] pathForResource:@"FragShader"
+                                                                    ofType:@"glsl"];
     
-    shader = glCreateShader(type);
-    
-    if (shader == 0)
-    {
-        return 0;
+    _program = [GLESUtils loadProgram:vertexShaderPath
+                 withFragmentShaderFilepath:fragShaderPath];
+    if (_program == 0) {
+        NSLog(@" >> Error: Failed to setup program.");
+        return;
     }
     
-    glShaderSource(shader, 1, &shaderSource, NULL);
-    glCompileShader(shader);
-    
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &complied);
-    if (!complied)
-    {
-        GLint infoLen = 0;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLen);
-        if (infoLen > 1) {
-            char *infoLog = malloc(sizeof(char) * infoLen);
-            glGetShaderInfoLog(shader, infoLen, NULL, infoLog);
-            free(infoLog);
-        }
-        glDeleteShader(shader);
-        return 0;
-    }
-    return shader;
+    glUseProgram(_program);
 }
 
-- (void)drawView
+#pragma mark - Render
+
+- (void)render
 {
-    [EAGLContext setCurrentContext:self.context];
-    
-    glBindFramebuffer(GL_FRAMEBUFFER, _viewFrameBuffer);
-    
-    _openGLESContext.width = _width;
-    _openGLESContext.height = _height;
-    
-    GLfloat vVertices[] = {0.0f, 0.5f, 0.0f,
-        -0.5f, -0.5f, 0.0f,
-        0.5f, -0.5f, 0.0f};
-    
-    glViewport(0, 0, _openGLESContext.width, _openGLESContext.height);
-    
+    glClearColor(1.0, 1.0, 0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT);
+
+    glViewport(0, 0, _width, _height);
     
-    glUseProgram(_openGLESContext.program);
-    
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, vVertices);
-    
-    glEnableVertexAttribArray(0);
+    GLfloat vertices[] = {
+        0.0f,  0.5f, 0.0f,
+        -0.5f, -0.5f, 0.0f,
+        0.5f,  -0.5f, 0.0f };
+
+    // Load the vertex data
+    GLuint positionSlot = glGetAttribLocation(_program, "vPosition");
+    glVertexAttribPointer(positionSlot, 3, GL_FLOAT, GL_FALSE, 0, vertices );
+    glEnableVertexAttribArray(positionSlot);
     
     glDrawArrays(GL_TRIANGLES, 0, 3);
     
-    glBindRenderbuffer(GL_RENDERBUFFER, _viewRenderBuffer);
-    
-    [self.context presentRenderbuffer:GL_RENDERBUFFER];
+    [_context presentRenderbuffer:GL_RENDERBUFFER];
 }
 
 @end
